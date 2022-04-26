@@ -42,7 +42,7 @@
   </div>
   <div class="row">
     <nav class="col-md-auto nav flex-column border">
-      <a class="nav-link root" href="#">Главная</a>
+      <a class="nav-link root" href="{% url 'main:index' %}">Главная</a>
       {% for rubric in rubrics %}
       {% ifchanged rubric.super_rubric.pk %}
       <span class="nav-link root font-weight-bold">
