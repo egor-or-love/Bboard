@@ -1,10 +1,10 @@
 from django import forms
-from .models import AdvUser, SuperRubric, SubRubric
 from .apps import user_registered
+from captcha.fields import CaptchaField
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
-from .models import Bb, AdditionalImage
+from .models import AdvUser, SuperRubric, SubRubric, Bb, AdditionalImage, Comment
 
 
 class SearchForm(forms.Form):
@@ -36,7 +36,7 @@ class RegisterUserForm(forms.ModelForm):
         super().clean()
         password1 = self.cleaned_data['password1']
         password2 = self.cleaned_data['password2']
-        if password1 and password2 and password2 != password2:
+        if password1 and password2 and password1 != password2:
             errors = {'password2': ValidationError('Введенные пароли не совпадают', code='password_mismatch')}
             raise ValidationError(errors)
 
@@ -72,3 +72,19 @@ class BbForm(forms.ModelForm):
 
 
 AIFormSet = inlineformset_factory(Bb, AdditionalImage, fields='__all__')
+
+
+class UserCommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        exclude = ('is_active',)
+        widgets = {'bb': forms.HiddenInput}
+
+
+class GuestCommentForm(forms.ModelForm):
+    captcha = CaptchaField(label='Введите текст с картинки', error_messages={'invalid': 'Неправильный текст'})
+
+    class Meta:
+        model = Comment
+        exclude = ('is_active',)
+        widgets = {'bb': forms.HiddenInput}

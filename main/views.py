@@ -1,26 +1,26 @@
-from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LogoutView, LoginView, PasswordChangeView, PasswordResetView
+from django.contrib.auth.views import PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
+from django.contrib.messages.views import SuccessMessageMixin
+from django.core.paginator import Paginator
+from django.core.signing import BadSignature
+from django.db.models import Q
 from django.http import HttpResponse, Http404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
-from django.contrib.auth.views import LogoutView, LoginView, PasswordChangeView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required
-from django.views.generic.edit import UpdateView
-from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
-from django.shortcuts import get_object_or_404
-from django.views.generic.edit import CreateView
 from django.views.generic.base import TemplateView
-from django.core.signing import BadSignature
-from django.views.generic.edit import DeleteView
-from django.contrib.auth import logout
-from django.contrib import messages
-from django.core.paginator import Paginator
-from django.db.models import Q
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
 
+
+from .forms import ChangeUserInfoForm, RegisterUserForm, SearchForm
+from .forms import BbForm, AIFormSet, UserCommentForm, GuestCommentForm
+from .models import AdvUser, SubRubric, Bb, Comment
 from .utilities import signer
-from .models import AdvUser, SubRubric, Bb
-from .forms import ChangeUserInfoForm, RegisterUserForm, SearchForm, BbForm, AIFormSet
 
 
 # Create your views here.
@@ -48,7 +48,23 @@ def profile(request):
 def detail(request, rubric_pk, pk):
     bb = get_object_or_404(Bb, pk=pk)
     ais = bb.additionalimage_set.all()
-    context = {'bb': bb, 'ais': ais}
+    comments = Comment.objects.filter(bb=pk, is_active=True)
+    initial = {'bb': bb.pk}
+    if request.user.is_authenticated:
+        initial['author'] = request.user.username
+        form_class = UserCommentForm
+    else:
+        form_class = GuestCommentForm
+    form = form_class(initial=initial)
+    if request.method == 'POST':
+        c_form = form_class(request.POST)
+        if c_form.is_valid():
+            c_form.save()
+            messages.add_message(request, messages.SUCCESS, 'Комментарий добавлен')
+        else:
+            form = c_form
+            messages.add_message(request, messages.WARNING, 'Комментарий не добавлен')
+    context = {'bb': bb, 'ais': ais, 'comments': comments, 'form': form}
     return render(request, 'main/detail.html', context)
 
 
@@ -144,6 +160,26 @@ class BBPasswordChangeView(SuccessMessageMixin, LoginRequiredMixin, PasswordChan
     template_name = 'main/password_change.html'
     success_url = reverse_lazy('main:profile')
     success_message = 'Пароль пользователя изменен'
+
+
+class BBPasswordResetView(PasswordResetView):
+    template_name = 'main/password_reset.html'
+    subject_template_name = 'email/reset_letter_subject.txt'
+    email_template_name = 'email/reset_letter_body.txt'
+    success_url = reverse_lazy('main:password_reset_done')
+
+
+class BBPasswordResetDoneView(PasswordResetDoneView):
+    template_name = 'main/password_reset_done.html'
+
+
+class BBPasswordResetConfirmView(PasswordResetConfirmView):
+    template_name = 'main/password_confirm.html'
+    success_url = reverse_lazy('main:password_reset_complete')
+
+
+class BBPasswordResetCompleteView(PasswordResetCompleteView):
+    template_name = 'main/password_complete.html'
 
 
 class ChangeUserInfoView(SuccessMessageMixin, LoginRequiredMixin, UpdateView):
