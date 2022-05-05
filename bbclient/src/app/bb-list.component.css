@@ -1,0 +1,14 @@
+div {
+  margin: 10рх 0рх;
+  padding: 0рх 10рх;
+  border: grey thin solid;
+}
+div p.price {
+  font-size: larger;
+  font-weight: bold;
+  text-align: right;
+}
+div p.date {
+  font-style: italic;
+  text-align: right;
+}
